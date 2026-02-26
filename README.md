@@ -33,8 +33,8 @@ The `prompts/baselines/` folder contains prompts used for the comparison baselin
 - `direct-outline-extraction.txt` — Single-step Image-to-outlines generation
 - `image-to-openscad.txt` — Single-step Image-to-CAD (OpenSCAD) generation
 
-## Laserify is a research project developed at the Technion - Israel Institute of Technology (Haifa, Israel).
+### Laserify is a research project developed at the Technion - Israel Institute of Technology (Haifa, Israel).
 
--- Ziv Botzer — ziv.botzer@campus.technion.ac.il
--- Guy Austern — guyaustern@technion.ac.il
--- Yoav Sterman — sterman.yoav@technion.ac.il
+- Ziv Botzer — ziv.botzer@campus.technion.ac.il
+- Guy Austern — guyaustern@technion.ac.il
+- Yoav Sterman — sterman.yoav@technion.ac.il
