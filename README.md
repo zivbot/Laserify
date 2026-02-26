@@ -33,8 +33,19 @@ The `prompts/baselines/` folder contains prompts used for the comparison baselin
 - `direct-outline-extraction.txt` — Single-step Image-to-outlines generation
 - `image-to-openscad.txt` — Single-step Image-to-CAD (OpenSCAD) generation
 
+## ✍️ Citation
+
+If you use these prompts or the **Laserify** workflow in your research, please cite our **CHI 2026** work:
+
+[**Laserify: From Multimodal Input to Fabrication-Ready Laser Cut Plans**](https://doi.org/10.1145/3772363.3798604)  
+_Ziv Botzer, Guy Austern, and Yoav Sterman._ In Extended Abstracts of the 2026 CHI Conference on Human Factors in Computing Systems (CHI EA '26).
+
 ### Laserify is a research project developed at the Technion - Israel Institute of Technology (Haifa, Israel).
 
 - Ziv Botzer — ziv.botzer@campus.technion.ac.il
 - Guy Austern — guyaustern@technion.ac.il
 - Yoav Sterman — sterman.yoav@technion.ac.il
+
+## License
+
+This work is licensed under a [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License (CC-BY-NC-ND)](https://creativecommons.org/licenses/by-nc-nd/4.0/).
