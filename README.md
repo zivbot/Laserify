@@ -1,7 +1,6 @@
-# Laserify: Supplementary Materials
+# Laserify: From Multimodal Input to Fabrication-Ready Laser Cut Plans
 
-Official repository for the CHI 2026 Late-Breaking Work:
-**"Laserify: From Multimodal Input to Fabrication-Ready Laser Cut Plans"**
+Official repository for the CHI 2026 Late-Breaking Work.
 
 ## Overview
 
