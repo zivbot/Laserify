@@ -1,0 +1,27 @@
+You are a CAD professional. You are given a photograph of a physical laser-cut assembly model.
+
+Your task is to produce a single 2D fabrication plan showing ALL parts required to recreate this model as flat cut pieces.
+
+Rules:
+- Identify every individual component visible in the photo.
+- Reconstruct each part as an accurate 2D outline based on its true shape.
+- Do NOT simplify, stylize, or approximate geometry.
+- Include tabs, slots, joints, and internal cutouts to allow assembly.
+- Output each part as a completely solid black silhouette.
+- Do NOT include textures, shading, gradients, or strokes — silhouettes only.
+- Background must be pure white.
+- Arrange parts flat, separated, non-overlapping, optimally packed but readable.
+- Do not rotate parts into perspective — all must be orthographic top-down views only.
+- Keep original proportions and scale relationships between all parts.
+- Do NOT add labels, arrows, annotations, numbering, or measurements.
+- Do NOT include the original assembled object — show only the unfolded parts.
+- Output must look like a professional laser-cut layout sheet ready for SVG tracing.
+- Square format.
+
+Aesthetic Style:
+- Ultra high contrast black silhouettes on pure white.
+- Crisp edges, no blur, no effects.
+- Clean technical drafting look.
+
+Goal:
+Produce an image that can be directly traced into vector paths for laser cutting with zero interpretation errors.

@@ -1,0 +1,454 @@
+Stage 2a — Global Scene Analysis and Part Identification
+
+Overview
+    You are a CAD professional analyzing a photograph of a physical model made of laser-cut pieces.
+    Your task is to:
+    - Establish a global coordinate system
+    - Identify all parts
+    - Classify part complexity
+    
+Technical Constraints
+    - All dimensions are in millimeters (mm)
+    - All parts are flat sheets of uniform thickness
+    - Output must be a single valid JSON instance conforming to the provided schema
+
+Section 1: Coordinate System Definition
+
+    1.1 Object-Centric Frame Selection
+        Define a stable right-handed coordinate system attached to the object itself, not the camera view.
+
+        Front Selection:
+            Identify the object's "front" using these cues (in priority order):
+            - Functional features (openings, controls, interfaces)
+            - Dominant faces or main silhouette
+            - Readable text or graphics orientation
+            - Intended use direction
+
+            If ambiguous:
+            - Apply a deterministic choice and document the reasoning.
+
+        Axes Definition (when facing the chosen front):
+            - +X → object's right side
+            - +Y → from front toward back (depth)
+            - +Z → upward (against gravity or perpendicular to resting surface)
+
+            These axes remain fixed to the object regardless of camera angle.
+
+    1.2 Origin Placement
+
+        Symmetry Assessment (perform before selecting origin):
+            Explicitly evaluate the object for perfect symmetry. Do NOT assume symmetry exists.
+            - Lateral symmetry: left-right mirroring across YZ plane
+            - Longitudinal symmetry: front-back mirroring across XZ plane
+            Document visual evidence.
+
+        Origin Placement Rules (apply in order):
+            - If both lateral AND longitudinal symmetry exist:
+                → place origin at their intersection at Z=0 (bottom)
+            - If only one symmetry exists:
+                → place origin on that symmetry plane at bottom-center
+            - If no symmetry exists:
+                → place at front-bottom-center of the object
+
+            Always document which rule was applied and why.
+
+    1.3 Camera Transform
+        Estimate the transformation from camera view to object coordinates:
+        - Rotation: yaw, pitch, roll in degrees
+        - Matrix: 3×3 rotation matrix R
+        - Confidence: 0.0 to 1.0 accuracy score
+
+        Validation Requirements:
+        - Enforce right-hand rule: X × Y = Z
+        - All descriptions must use object frame (do not reference “left in image” or “camera right”)
+        - Dimensions must use object axes: width=X, depth=Y, height=Z
+
+Section 2: Scene Analysis
+
+    2.1 Bounding Box and Dimensions
+        - Calculate axis-aligned bounding box for the entire visible object
+        - Provide min/max coordinates in object frame:
+          (min-x, min-y, min-z, max-x, max-y, max-z)
+        - Extract overall dimensions: width (X), depth (Y), height (Z) in mm
+
+    2.2 Material Properties
+        Estimate fabrication parameters:
+        - Material type: e.g., plywood, MDF, acrylic, cardboard
+        - Material thickness in mm
+        - Kerf compensation in mm
+
+
+Section 3: Part Identification and Analysis
+
+    3.1 Part Listing Rules
+        - List the physical part observed or inferred
+        - Parsimony Principle: Minimize total part count. When ambiguous, assume a single complex part rather than multiple simple parts.
+        - Continuity Rule: Treat coplanar, adjacent regions as a single part unless a distinct physical cut line or joinery feature effectively separates them.
+        - Surface Detail vs. Part: Do not confuse surface engravings, scorch marks, or texture patterns with separate geometric parts.
+        - Assign sequential part numbers: P001, P002, P003, ...
+        - Do NOT create assemblies, groups, or patterns
+        - Do NOT include geometry details (no vertices, no coordinates)
+
+    3.2 Basic Part Information
+        For each part, specify:
+        - part_number: "P###"
+        - name: short descriptive label
+        - description: 1–2 line explanation of purpose and distinguishing features
+
+        visibility:
+        - "visible" = directly observable
+        - "implied" = inferred from symmetry/assembly logic
+
+        cutouts:
+        - number: count of interior cutouts (excluding joinery)
+        - description: purpose or pattern summary
+
+    3.3 Part Relationships
+
+        After listing parts, provide:
+        - identical_to: reference another P### if geometry matches, store the referenced part in "part_id"
+        - attachment_hint: list neighbors and connection type
+          - "face_adjacency": faces touch, parts are coplanar or parallel
+          - "edge_to_face" : Thin edge of one part meets broad face of another
+          - "face_to_face_crossing" : Broad faces meet while parts intersect through each other
+
+    3.4 Complexity Classification (Per Part)
+        
+        Required Assessments:
+            
+            - outline_complexity: rectangular / simple_geometric / complex
+            - cutout_complexity: none / simple_geometric / complex
+            - occlusion_level: none / partial / significant
+
+
+Section 4: Output Requirements
+
+    4.1 JSON Structure
+        Output a single JSON instance with:
+        - meta: array with one entry describing Stage 2a
+        - scene: global scene + coordinate system
+        - parts: list of all identified parts and their attributes
+
+    4.2 Validation Checklist
+        Verify:
+        - Part numbers follow P### sequential format
+        - scene.part_count equals number of parts
+        - Coordinate system is object-centric
+        - All dimensions are in mm
+        - Complexity assessment ignores joinery
+        - Bounding box uses axis-aligned coordinates
+        - Origin placement follows symmetry rules
+        - Each part includes all required fields
+
+    4.3 Critical Requirements
+        - NO schema echo (do not print schema)
+        - NO comments or text outside the JSON
+        - NO “type”, “properties”, “required” keys in output
+        - Output must be valid, parseable JSON
+
+
+JSON Schema
+
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["meta","scene","parts"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "array",
+      "description": "Array of metadata entries, one per stage in the processing pipeline.",
+      "items": {
+        "type": "object",
+        "required": ["schema_version", "stage"],
+        "properties": {
+          "schema_version": { 
+              "type": "string",
+              "const" : "4-004" },
+          "stage": { "type": "string", "const": "stage1" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "issues": {
+            "type": "array",
+            "description": "List of detected problems or uncertainties encountered during reasoning.",
+            "items": {
+              "type": "object",
+              "required": ["message", "severity"],
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "description": "Human-readable description of the issue."
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": ["info", "warning", "error"],
+                  "description": "Impact level on downstream reliability."
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+
+    "scene": {
+      "type": "object",
+      "required": [
+        "description",
+        "units",
+        "material_type",
+        "material_thickness",
+        "kerf",
+        "coordinate_system",
+        "axes",
+        "dimensions",
+        "bbox",
+        "symmetry",
+        "part_count",
+        "camera"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human-readable scene summary (short)."
+        },
+        "units": {
+          "type": "string",
+          "const": "mm",
+          "description": "All numeric lengths are in millimeters."
+        },
+        "material_type": {
+          "type": "string",
+          "description": "Estimated material (e.g., 'plywood', 'acrylic')."
+        },
+        "material_thickness": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Estimated sheet thickness in mm (numeric)."
+        },
+        "kerf": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Recommended kerf in mm (numeric)."
+        },
+        "coordinate_system": {
+          "type": "object",
+          "required": ["handedness", "origin", "reference_features"],
+          "properties": {
+            "handedness": { "type": "string", "enum": ["right"] },
+            "origin": {
+              "type": "string",
+              "description": "Where (0,0,0) is placed in the object frame and why."
+            },
+            "reference_features": {
+              "type": "object",
+              "required": ["front_feature", "up_feature"],
+              "properties": {
+                "front_feature": {
+                  "type": "string",
+                  "description": "Physical feature or rationale that defined the 'front'."
+                },
+                "up_feature": {
+                  "type": "string",
+                  "description": "Physical feature or rationale that defined 'up'."
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "axes": {
+          "type": "object",
+          "required": ["X","Y","Z"],
+          "properties": {
+            "X": { "type": "string", "description": "Direction of +X (object's right side)." },
+            "Y": { "type": "string", "description": "Direction of +Y (from front toward back)." },
+            "Z": { "type": "string", "description": "Direction of +Z (upward)." }
+          },
+          "additionalProperties": false
+        },
+        "dimensions": {
+          "type": "object",
+          "required": ["width", "depth", "height"],
+          "additionalProperties": false,
+          "properties": {
+            "width": { "type": "number", "minimum": 0, "description": "Size along X in mm." },
+            "depth": { "type": "number", "minimum": 0, "description": "Size along Y in mm." },
+            "height": { "type": "number", "minimum": 0, "description": "Size along Z in mm." }
+          }
+        },
+        "bbox": {
+          "type": "object",
+          "required": ["min-x", "min-y", "min-z", "max-x", "max-y", "max-z"],
+          "additionalProperties": false,
+          "properties": {
+            "min-x": { "type": "number", "description": "Minimum X in world coords (mm)." },
+            "min-y": { "type": "number", "description": "Minimum Y in world coords (mm)." },
+            "min-z": { "type": "number", "description": "Minimum Z in world coords (mm)." },
+            "max-x": { "type": "number", "description": "Maximum X in world coords (mm)." },
+            "max-y": { "type": "number", "description": "Maximum Y in world coords (mm)." },
+            "max-z": { "type": "number", "description": "Maximum Z in world coords (mm)." }
+          }
+        },
+        "symmetry": {
+          "type": "object",
+          "required": ["lateral", "longitudinal"],
+          "additionalProperties": false,
+          "properties": {
+            "lateral": {
+              "type": "object",
+              "required": ["exists", "evidence"],
+              "additionalProperties": false,
+              "properties": {
+                "exists": { "type": "boolean" },
+                "evidence": { "type": "string" }
+              }
+            },
+            "longitudinal": {
+              "type": "object",
+              "required": ["exists", "evidence"],
+              "additionalProperties": false,
+              "properties": {
+                "exists": { "type": "boolean" },
+                "evidence": { "type": "string" }
+              }
+            }
+          }
+        },
+        "part_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of parts identified in 'parts' array; should match parts.length."
+        },
+        "camera": {
+          "type": "object",
+          "required": ["camera_to_object"],
+          "properties": {
+            "camera_to_object": {
+              "type": "object",
+              "required": ["yaw_pitch_roll_deg", "R", "confidence"],
+              "properties": {
+                "yaw_pitch_roll_deg": {
+                  "type": "array",
+                  "items": { "type": "number" },
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "description": "Yaw, pitch, roll (degrees) from camera frame to object frame"
+                },
+                "R": {
+                  "type": "array",
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "items": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": { "type": "number" }
+                  },
+                  "description": "3×3 rotation matrix mapping camera frame to object frame"
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Confidence in the estimated transform"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+
+    "parts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["part_number","name","description","visibility","cutouts","complexity"],
+        "properties": {
+          "part_number": { "type": "string", "pattern": "^P\\d{3}$" },
+          "name": { "type": "string" },
+          "description": { 
+            "type": "string",
+            "description": "1–2 line human description to help identify the part in the photograph." 
+          },
+          "visibility": { 
+            "type": "string", 
+            "enum": ["visible","implied"],
+            "description": "Whether part is directly visible or inferred from context/symmetry"
+          },
+          "cutouts": {
+            "type": "object",
+            "required": ["number","description"],
+            "properties": {
+              "number": { "type": "integer", "minimum": 0 },
+              "description": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
+          "identical_to": { 
+            "type": "object",
+            "description": "Reference to another part with identical geometry",
+            "required": ["part_id"],
+            "properties": {
+              "part_id": {
+                "type": "string",
+                "pattern": "^P\\d{3}$",
+                "description": "Part number of the identical part"
+              },
+              "mirror_axis": {
+                "type": "string",
+                "enum": ["x", "y", "z", "none"],
+                "description": "Mirror relationship axis (populated in Stage 2)"
+              }
+            },
+            "additionalProperties": false
+          },
+          "attachment_hint": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "part_numbers": {
+                  "type": "array",
+                  "items": { "type": "string", "pattern": "^P\\d{3}$" }
+                },
+                "connection_type": { 
+                  "type": "string",
+                  "enum": ["face_adjacency", "edge_to_face", "face_to_face_crossing"],
+                  "description": "How parts meet geometrically"
+                }
+              },
+              "required": ["part_numbers","connection_type"],
+              "additionalProperties": false
+            }
+          },
+          "complexity": {
+            "type": "object",
+            "required": ["outline_complexity", "cutout_complexity", "occlusion_level"],
+            "additionalProperties": false,
+            "properties": {
+              "outline_complexity": {
+                "type": "string",
+                "enum": ["rectangular", "simple_geometric", "complex"]
+              },
+              "cutout_complexity": {
+                "type": "string", 
+                "enum": ["none", "simple_geometric", "complex"]
+              },
+              "occlusion_level": {
+                "type": "string",
+                "enum": ["none", "partial", "significant"]
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

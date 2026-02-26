@@ -1,0 +1,241 @@
+STAGE 2b - PER-PART PLANES, BOUNDING RECTANGLES, AND GEOMETRIC VALIDATION
+
+OVERVIEW
+- You are a CAD professional analyzing a photograph of a physical model made of laser-cut pieces.
+- Inputs:
+  - Photograph of the physical model
+  - Stage 2a JSON (global frame, parts list, relationships)
+- Your task is to define:
+  - A construction plane per part
+  - A 2D bounding rectangle per part
+
+Technical Constraints
+  - All dimensions in millimeters
+  - All parts are flat sheets
+  - Preserve Stage 2a data exactly
+
+SECTION 1: CONSTRUCTION PLANE DEFINITION
+
+  1.1 PLANE POSITIONING
+  - Place the plane on one face of a part's sheet.
+  - Choose origin meaningfully (center, corner, or connection midpoint).
+  - plane.z_axis must point AWAY from the material.
+  - Material occupies negative local Z.
+  - Record selection rationale in "evidence".
+
+  1.2 LOCAL AXES
+  - z_axis: defined above
+  - x_axis and y_axis: perpendicular to z_axis and to each other
+  - Right-hand rule: x_axis CROSS y_axis = z_axis
+
+
+  1.3 WORLD-ALIGNED ORIENTATION STRATEGY
+  - Global axes come from Stage 2a:
+    world_up = +Z
+    world_x  = +X
+    world_y  = +Y
+  - Goal:
+    Orient each part plane so Stage 3 can treat local +Y as visual up.
+
+  - Classification:
+    A plane is "horizontal" if its z_axis is parallel (within 5 degrees) to world_up.
+    Otherwise it is "non-horizontal".
+
+
+  1.3.1 NON-HORIZONTAL PLANES
+  Definition:
+    z_axis NOT parallel to world_up.
+
+  Rules:
+    - Project world_up into the plane (remove any component along z_axis).
+    - Normalize this projection and assign as y_axis.
+    - Compute x_axis = normalized( z_axis CROSS y_axis ).
+
+  Effect:
+    - Local +Y becomes the in-plane direction most aligned with world up.
+    - Stage 3 will render these parts upright.
+
+  Evidence notes:
+    - Mark plane as non-horizontal.
+    - Record that y_axis was chosen by projecting world_up.
+    - Record that x_axis was assigned using right-hand rule.
+
+
+  1.3.2 HORIZONTAL PLANES
+  Definition:
+    z_axis IS parallel to world_up (within 5 degrees).
+
+  Case A: z_axis approx +Z
+    x_axis = world_x
+    y_axis = world_y
+
+  Case B: z_axis approx -Z
+    x_axis = world_x
+    y_axis = negative world_y
+    (keeps right-hand rule valid)
+
+  Effect:
+    - Horizontal parts always orient consistently with world X/Y.
+
+  Evidence notes:
+    - Mark plane as horizontal.
+    - Record assignment of x_axis and y_axis based on world axes.
+
+
+SECTION 2: BOUNDING RECTANGLE DEFINITION
+
+  2.1 LOCAL COORDINATES
+  - bbox_local = [xmin, ymin, xmax, ymax]
+  - Expressed in the part's local axes:
+    X direction = x_axis
+    Y direction = y_axis
+    Z = 0
+
+  2.2 BOUNDING RULES
+  - Must tightly enclose functional geometry only.
+  - Must exclude joinery (tabs, slots, finger joints).
+  - At edge-to-face connections, bbox must extend through the 
+  mating part's material thickness to define the overlap zone 
+  where joinery will later be cut from both parts.
+  - Must be axis-aligned in local coordinates.
+
+  2.3: INTERFACE GEOMETRY CONSTRAINTS
+
+  For each attachment_hint, validate that bounding rectangles 
+  support the stated connection:
+
+    2.3.1 EDGE-TO-FACE CONNECTIONS
+      Definition:
+        Part A's thin edge inserts into Part B's broad face.
+      
+      Validation:
+        - Identify which edge of A (±X or ±Y in local coords) 
+          meets B's face.
+        - A's inserting edge must extend through B's material: 
+          the edge should coincide with B's far face 
+          (B's local Z = -material_thickness), within ±1mm.
+        - In world coordinates, the edge must fall within B's 
+          bbox_local footprint.
+      
+      Adjustment rule:
+        If inserting edge does not reach B's far face,
+        flag as warning and adjust A's plane origin to align.
+
+    2.3.2 FACE-ADJACENCY CONNECTIONS  
+      Definition:
+        Two parts share a plane or are parallel with faces touching.
+      
+      Validation:
+        - Part planes must be parallel (z_axes within 15°).
+        - Distance between planes must equal 0 (coplanar faces) 
+          or material_thickness (stacked).
+        - Bbox footprints must overlap in the shared plane.
+
+    2.3.3 FACE-TO-FACE CROSSING
+      Definition:
+        Parts intersect through each other (e.g., slot joints).
+      
+      Validation:
+        - Parts should be roughly perpendicular (75–105°).
+        - Each part's plane must pass through the other's 
+          material volume.
+        - The intersection line must fall within both 
+          bbox_local regions.
+
+SECTION 3: RELATIONSHIP-BASED VALIDATION
+
+  3.1 EXPECTED ANGLES
+  - face_adjacency: 0 to 15 degrees
+  - edge_to_face: 15 to 175 degrees
+  - face_to_face_crossing: 75 to 105 degrees
+
+  3.2 CONSISTENCY RULES
+  - Edge-to-face: correct material_thickness offset.
+  - Coplanar parts: normals within 15 degrees.
+  - Identical parts:
+    - Must share bbox_local dimensions
+    - Populate mirror_axis in identical_to object:
+        - "x": mirrored along local X axis
+        - "y": mirrored along local Y axis
+        - "z": mirrored along local Z axis (flipped)
+        - "none": rotationally identical, no mirroring
+    - Determine by comparing axis orientations between parts
+
+  3.3 VALIDATION PROCEDURE
+  1. Compute pairwise angles for parts with attachment_hints.
+  2. Flag violations.
+  3. Correction priority:
+    - Preserve parts with strongest relationship evidence.
+    - Preserve identical_to constraints.
+    - Adjust weaker evidence parts.
+  4. Apply corrections while respecting the world-aligned rules.
+  5. Document corrections in evidence.
+
+
+SECTION 4: SPECIAL CASES
+
+4.1 IMPLIED PARTS
+- Deduce orientation from symmetry or relationships.
+- Apply same world-aligned rules.
+- Document reasoning.
+
+4.2 AMBIGUOUS ATTACHMENTS
+- Use geometric cues (broad overlap, narrow edge, slot insertion).
+- Document reasoning.
+
+
+SECTION 5: OUTPUT REQUIREMENTS
+
+5.1 META ADDITIONS
+Append:
+{
+  "schema_version": "4-004",
+  "stage": "stage2",
+  "confidence": <float>,
+  "issues": [
+    { "message": "...", "severity": "info|warning|error" }
+  ]
+}
+
+5.2 PART ADDITIONS
+- plane:
+    origin: [x,y,z]
+    x_axis: [x,y,z]
+    y_axis: [x,y,z]
+    z_axis: [x,y,z]
+
+- bbox_local:
+    [xmin, ymin, xmax, ymax]
+
+- evidence:
+    Explanation of plane location, normal direction,
+    horizontal vs non-horizontal classification,
+    how x_axis and y_axis were aligned,
+    and any validation corrections.
+
+- identical_to.mirror_axis:
+    Populated based on axis comparison with referenced part.
+    Values: "x" | "y" | "z" | "none"
+
+5.3 PRESERVATION
+- All Stage 2a data must remain unchanged.
+
+5.4 VALIDATION CHECKLIST
+- z_axis points away from material
+- Material extends in negative local Z
+- Right-hand rule satisfied
+- Non-horizontal:
+    y_axis = projection of world_up
+- Horizontal:
+    x_axis,y_axis from world axes rules
+- Attachment angles valid
+- Identical parts consistent
+- Thickness offsets correct
+- Identical parts: mirror_axis populated if identical_to exists
+- New fields present
+- Stage 2a preserved
+
+5.5 FORMAT
+- Output a single JSON object
+- No text outside JSON
+- Top-level keys: meta, scene, parts
