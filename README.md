@@ -2,6 +2,8 @@
 
 Official repository for the CHI 2026 Late-Breaking Work.
 
+[![Laserify Demo Video](https://img.youtube.com/vi/8MkUMRMw0ng/maxresdefault.jpg)](https://www.youtube.com/watch?v=8MkUMRMw0ng)
+
 ## Overview
 
 Laserify is a hybrid pipeline that transforms images of laser-cut objects into fabrication-ready 2D cut plans. It uses a neurosymbolic approach, combining the semantic reasoning of Vision-Language Models (VLMs) with the geometric precision of deterministic algorithms.
