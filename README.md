@@ -2,8 +2,7 @@
 
 Official repository for the CHI 2026 Late-Breaking Work.
 
-
-<img width="1156" height="649" alt="video-thumb" src="https://github.com/user-attachments/assets/2aadeaf9-0b2b-4220-973e-47ce7e8308d2" />
+<img width="1156" height="649" alt="video-thumb" src="video-thumb.png" />
 Laserify Demo Video (https://www.youtube.com/watch?v=8MkUMRMw0ng)
 
 ## Overview
