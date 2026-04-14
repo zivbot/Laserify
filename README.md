@@ -3,7 +3,8 @@
 Official repository for the CHI 2026 Late-Breaking Work.
 
 <img width="1156" height="649" alt="video-thumb" src="video-thumb.png" />
-Laserify Demo Video (https://www.youtube.com/watch?v=8MkUMRMw0ng)
+Laserify Demo Video (https://www.youtube.com/watch?v=OJ1A92zl7nk)
+ACM Digital Library https://dl.acm.org/doi/10.1145/3772363.3798604
 
 ## Overview
 
